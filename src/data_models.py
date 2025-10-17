@@ -3,32 +3,6 @@ from typing import List
 from datetime import datetime
 from enum import Enum
 
-
-class HomePageHeader(BaseModel):
-    date: str
-    name: str
-    contact: str
-    no_of_new_tenders: str
-    company: str
-
-class Tender(BaseModel):
-    tender_id: str
-    tender_name: str
-    tender_url: str
-    city: str
-    summary: str
-    value: str
-    due_date: str
-
-class TenderQuery(BaseModel):
-    query_name: str
-    number_of_tenders: str
-    tenders: List[Tender]
-
-class HomePageData(BaseModel):
-    header: HomePageHeader
-    query_table: List[TenderQuery]
-
 class TenderDetailPageFile(BaseModel):
     file_name: str
     file_url: str
@@ -73,3 +47,32 @@ class TenderDetailPage(BaseModel):
     key_dates: TenderDetailKeyDates
     contact_information: TenderDetailContactInformation
     other_detail: TenderDetailOtherDetail
+
+class HomePageHeader(BaseModel):
+    date: str
+    name: str
+    contact: str
+    no_of_new_tenders: str
+    company: str
+
+class Tender(BaseModel):
+    tender_id: str
+    tender_name: str
+    tender_url: str
+    drive_url: str | None
+    city: str
+    summary: str
+    value: str
+    due_date: str
+    # Details of the tender, could be undefined
+    details: TenderDetailPage | None
+
+class TenderQuery(BaseModel):
+    query_name: str
+    number_of_tenders: str
+    tenders: List[Tender]
+
+class HomePageData(BaseModel):
+    header: HomePageHeader
+    query_table: List[TenderQuery]
+

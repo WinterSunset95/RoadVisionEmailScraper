@@ -28,14 +28,14 @@
       <td>
         <table>
           <tr>
-            <td><h4>{{name}}</h4></td>
+            <td><h4 id="name">{{name}}</h4></td>
           </tr>
           <tr>
             <td id="company">{{company}}</td>
           </tr>
         </table>
       </td>
-      <td class="right_td_align"><h4>{{no_of_new_tenders}} New Tenders Related to Your Business</h4></td>
+      <td class="right_td_align"><h4><span id="no_of_new_tenders">{{no_of_new_tenders}}</span> New Tenders Related to Your Business</h4></td>
     </tr>
   </table>
 
@@ -50,8 +50,8 @@
     </thead>
     <tbody>
       <tr class="query_tender_row">
-        <td>{{query}}</td>
-        <td>{{no_of_tenders_found_under_query}}</td>
+        <td class="query_tender_row_query">{{query}}</td>
+        <td class="query_tender_row_no_of_tenders_found">{{no_of_tenders_found_under_query}}</td>
       </tr>
     </tbody>
   </table>
@@ -62,7 +62,7 @@
     <table class="tender_query_table">
       <thead>
         <tr>
-          <td class="center_td_align">{{tender_name}}</td>
+          <td class="center_td_align tender_query_table_tender_name">{{tender_name}}</td>
         </tr>
       </thead>
       <tbody>
@@ -70,16 +70,16 @@
           <td class="staggered_colored">
             <table class="tender_table" cellspacing="2" cellpadding="5">
               <tr>
-                <td>{{tender_name_and_number}}</td>
-                <td colspan="2" class="right_td_align">{{tender_city}}</td>
+                <td class="tender_table_tender_name_and_number">{{tender_name_and_number}}</td>
+                <td colspan="2" class="right_td_align tender_table_tender_city">{{tender_city}}</td>
               </tr>
               <tr colspan="3">
-                <td>{{tender_summary}}</td>
+                <td class="tender_table_tender_summary">{{tender_summary}}</td>
               </tr>
               <tr>
-                <td><b>Tender Value: </b> {{tender_value}}</td>
-                <td><b>Due Date: </b> {{tender_due_date}}</td>
-                <td class="right_td_align"><a href="{{tender_link}}"><b>View Tender</b></a></td>
+                <td><b>Tender Value: </b> <span class="tender_table_tender_value">{{tender_value}}</span></td>
+                <td><b>Due Date: </b> <span class="tender_table_tender_due_date">{{tender_due_date}}</span></td>
+                <td class="right_td_align"><a href="" class="tender_table_view_tender_link"><b>View Tender</b></a></td>
               </tr>
             </table>
           </td>

@@ -10,7 +10,7 @@ def scrape_page(url) -> HomePageData:
     soup = BeautifulSoup(page.content, 'html.parser')
 
     # There are two p-mr-date classes in the page. The first one contains the date, second one contains contact info
-    date_elem = soup.find('p', attrs={'class': 'p-mr-date'})
+    date_elem = soup.find('p', attrs={'class': 'm-r-date'})
     if not date_elem:
         raise Exception("Date not found")
     date = date_elem.text
@@ -21,7 +21,7 @@ def scrape_page(url) -> HomePageData:
     # For finding the number of new tenders, we need to find the m-main-count element.
     # This element will contain a string like "{{integer}} New Tenders Related to Your Business
     # We need to extract the integer from this string.
-    main_count_elem = soup.find('div', attrs={'class': 'm-main-count'})
+    main_count_elem = soup.find('p', attrs={'class': 'm-main-count'})
     if not main_count_elem:
         raise Exception("Main count not found")
     main_count = main_count_elem.text
@@ -35,19 +35,26 @@ def scrape_page(url) -> HomePageData:
             company=company
         )
 
+    # The body contains a div of class container-fluid
+    container = soup.find('div', attrs={'class': 'container-fluid'})
+    if not container:
+        raise Exception("Container not found")
+
     # There are 5 row elements (direct children) in the page.
-    row_elements = soup.find_all('div', attrs={'class': 'row'}, recursive=False)
+    row_elements = container.find_all('div', attrs={'class': 'row'}, recursive=False)
     if not len(row_elements) == 5:
         raise Exception("Row elements not found")
 
     # The 4th one contains a table with query names and number of tenders.
     query_names_and_tenders_table = row_elements[3]
-    # There will be a variable numnber of tr elements in this table. The first one is the table header.
-    row_elements = query_names_and_tenders_table.find_all('tr', recursive=False)
-    # drop the first one
-    row_elements = row_elements[1:]
+    # Get the table body
+    query_names_and_tenders_table_body = query_names_and_tenders_table.find('tbody')
+    if not query_names_and_tenders_table_body:
+        raise Exception("Table body not found")
+    # There will be a variable numnber of tr elements in this table.
+    table_body_rows = query_names_and_tenders_table_body.find_all('tr', recursive=False)
     queries_and_numbers: List[Tuple[str, str]] = []
-    for row in row_elements:
+    for row in table_body_rows:
         # Each tr element contains 3 td elements.
         # The first one is query name.
         # The second one is number of tenders.
@@ -81,7 +88,7 @@ def scrape_page(url) -> HomePageData:
         mainTR_elements = column.find_all('div', attrs={'class': 'm-mainTR'}, recursive=False)
         for mainTR in mainTR_elements:
             # each m-mainTR element will contain the following:
-            # 1. m-r-rd-title
+            # 1. m-r-td-title
             # 2. m-td-state
             # 3. 3 m-td-brief elements
             #   1. Summary of tender. We need to extract this with the html
@@ -89,7 +96,7 @@ def scrape_page(url) -> HomePageData:
             #   3. Due date. We need to remove the <strong> element from here
             # 4. m-td-brief-link
             #   contains an <a> element with the tender link
-            title_elem = mainTR.find('p', attrs={'class': 'm-r-rd-title'})
+            title_elem = mainTR.find('p', attrs={'class': 'm-r-td-title'})
             if not title_elem:
                 raise Exception("Title not found")
             title = title_elem.text
@@ -120,11 +127,13 @@ def scrape_page(url) -> HomePageData:
             tender_query_list.append(Tender(
                 tender_id=tender_id,
                 tender_name=title,
-                tender_url=str(link),
+                tender_url= "https://www.tenderdetail.com" + str(link),
+                drive_url=None,
                 city=state,
                 summary=summary_elem.text,
                 value=tender_value,
-                due_date=due_date
+                due_date=due_date,
+                details=None
             ))
 
         tenders_list_list.append(tender_query_list)

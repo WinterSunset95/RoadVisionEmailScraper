@@ -1,6 +1,12 @@
 from bs4 import BeautifulSoup
+import copy
+import premailer
 
 from data_models import HomePageData
+
+p = premailer.Premailer(
+        allow_loading_external_files=True
+    )
 
 def apply_multi_column_table_layout(soup, container_element, align_last_right=False):
     """
@@ -127,7 +133,7 @@ def reformat_page(soup: BeautifulSoup) -> BeautifulSoup:
     return soup
 
 
-def generate_email(data: HomePageData) -> str:
+def generate_email(data: HomePageData) -> BeautifulSoup:
     """
     Generates an email HTML string from a HomePageData object.
     """
@@ -138,4 +144,131 @@ def generate_email(data: HomePageData) -> str:
     # Create a new BeautifulSoup object from the template HTML
     soup = BeautifulSoup(template_html, 'html.parser')
 
-    # Search and replace variables in the template
+    # Get the elements
+    ## Header section
+    date_elem = soup.find('td', attrs={'id': 'date'})
+    if not date_elem:
+        raise Exception("Date element not found")
+    contact_elem = soup.find('td', attrs={'id': 'contact'})
+    if not contact_elem:
+        raise Exception("Contact element not found")
+    name_elem = soup.find('h4', attrs={'id': 'name'})
+    if not name_elem:
+        raise Exception("Name element not found")
+    company_elem = soup.find('td', attrs={'id': 'company'})
+    if not company_elem:
+        raise Exception("Company element not found")
+    no_of_new_tenders_elem = soup.find('span', attrs={'id': 'no_of_new_tenders'})
+    if not no_of_new_tenders_elem:
+        raise Exception("No of new tenders element not found")
+
+    # Set the values
+    date_elem.string = data.header.date
+    contact_elem.string = data.header.contact
+    name_elem.string = data.header.name
+    company_elem.string = data.header.company
+    no_of_new_tenders_elem.string = data.header.no_of_new_tenders
+
+    # The queries table
+    queries_table_elem = soup.find('table', attrs={'id': 'queries'})
+    if not queries_table_elem:
+        raise Exception("Queries table not found")
+    queries_table_body = queries_table_elem.find('tbody')
+    if not queries_table_body:
+        raise Exception("Queries table body not found")
+
+    # Inside queries_table_body, there will be a class query_tender_row.
+    # Grab the element, save it in memory for appending, decompose the original one
+    query_tender_row_elem = queries_table_body.find('tr', attrs={'class': 'query_tender_row'})
+    if not query_tender_row_elem:
+        raise Exception("Query tender row not found")
+    # query_tender_row_elem.decompose()
+    # Now we can append the new tender rows to the table body
+    for tender in data.query_table:
+        new_query_tender_row = copy.copy(query_tender_row_elem)
+        # Classes available in new_query_tender_row:
+        #   query_tender_row_query
+        #   query_tender_row_no_of_tenders_found
+        query_tender_row_query = new_query_tender_row.find('td', attrs={'class': 'query_tender_row_query'})
+        if query_tender_row_query:
+            query_tender_row_query.string = tender.query_name
+        query_tender_row_no_of_tenders_found = new_query_tender_row.find('td', attrs={'class': 'query_tender_row_no_of_tenders_found'})
+        if query_tender_row_no_of_tenders_found:
+            query_tender_row_no_of_tenders_found.string = tender.number_of_tenders
+        queries_table_body.append(new_query_tender_row)
+    query_tender_row_elem.decompose()
+
+    # The tenders div
+    tenders_div_elem = soup.find('div', attrs={'id': 'tenders'})
+    if not tenders_div_elem:
+        raise Exception("Tenders div not found")
+
+    # Inside tenders_div_elem, there will be a table
+    # Grab the element, save it in memory for appending, decompose the original one
+    tenders_table_elem = tenders_div_elem.find('table')
+    if not tenders_table_elem:
+        raise Exception("Tenders table not found")
+
+    for query in data.query_table:
+        new_query_table = copy.copy(tenders_table_elem)
+        # Classes available in new_tender_table:
+        #   tender_query_table_tender_name
+        #   tender_table
+        tender_query_table_tender_name = new_query_table.find('td', attrs={'class': 'tender_query_table_tender_name'})
+        if not tender_query_table_tender_name:
+            raise Exception("Tender query table tender name not found")
+        tender_query_table_tender_name.string = query.query_name
+
+        tender_query_table_body = new_query_table.find('tbody')
+        if not tender_query_table_body:
+            raise Exception("Tender query table body not found")
+        tender_table = tender_query_table_body.find('tr')
+        if not tender_table:
+            raise Exception("Tender table not found")
+        for tender_data in query.tenders:
+            new_tender_table = copy.copy(tender_table)
+            if not new_tender_table:
+                raise Exception("New tender table not found")
+            # Classes available in new_tender_table:
+            #   tender_table_tender_name_and_number
+            #   tender_table_tender_city
+            #   tender_table_tender_summary
+            #   tender_table_tender_value
+            #   tender_table_tender_due_date
+            #   tender_table_view_tender_link
+            tender_table_tender_name_and_number = new_tender_table.find('td', attrs={'class': 'tender_table_tender_name_and_number'})
+            if not tender_table_tender_name_and_number:
+                raise Exception("Tender table tender name and number not found")
+            tender_table_tender_name_and_number.string = tender_data.tender_name
+            tender_table_tender_city = new_tender_table.find('td', attrs={'class': 'tender_table_tender_city'})
+            if not tender_table_tender_city:
+                raise Exception("Tender table tender city not found")
+            tender_table_tender_city.string = tender_data.city
+            tender_table_tender_summary = new_tender_table.find('td', attrs={'class': 'tender_table_tender_summary'})
+            if not tender_table_tender_summary:
+                raise Exception("Tender table tender summary not found")
+            tender_table_tender_summary.string = tender_data.summary
+            tender_table_tender_value = new_tender_table.find('span', attrs={'class': 'tender_table_tender_value'})
+            if not tender_table_tender_value:
+                raise Exception("Tender table tender value not found")
+            tender_table_tender_value.string = tender_data.value
+            tender_table_tender_due_date = new_tender_table.find('span', attrs={'class': 'tender_table_tender_due_date'})
+            if not tender_table_tender_due_date:
+                raise Exception("Tender table tender due date not found")
+            tender_table_tender_due_date.string = tender_data.due_date
+            tender_table_view_tender_link = new_tender_table.find('a', attrs={'class': 'tender_table_view_tender_link'})
+            if not tender_table_view_tender_link:
+                raise Exception("Tender table view tender link not found")
+            tender_table_view_tender_link['href'] = tender_data.drive_url or tender_data.tender_url
+
+            tender_query_table_body.append(new_tender_table)
+
+        tender_table.decompose()
+
+        tenders_div_elem.append(new_query_table)
+
+    tenders_table_elem.decompose()
+
+    transformed = p.transform(soup.prettify())
+
+    return BeautifulSoup(transformed, 'html.parser')

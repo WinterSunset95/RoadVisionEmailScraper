@@ -7,10 +7,48 @@ from googleapiclient.http import MediaFileUpload
 
 import os
 import mimetypes
+import requests
+
+from data_models import HomePageData
+from detail_page_scrape import scrape_tender
 
 # Google drive setup
 SCOPES = ['https://www.googleapis.com/auth/drive']
 creds = None
+
+def download_folders(data: HomePageData):
+    date = data.header.date
+    os.system("rm -rf tenders/" + date)
+    os.system("mkdir -p tenders/" + date)
+
+    service = authenticate_google_drive()
+    if not service:
+        return
+
+    # Upload the "date" folder to Google Drive and get the folder id
+    date_folder_id = upload_folder_to_drive(service, "tenders/" + date)
+
+    for query_table in data.query_table:
+        for tender in query_table.tenders:
+            if not tender.details:
+                tender.details = scrape_tender(tender.tender_url)
+                raise Exception("Tender details not found")
+            # Create a folder for each tender
+            folder_path = "tenders/" + date + "/" + tender.tender_id
+            os.system("mkdir -p " + folder_path)
+            for file in tender.details.other_detail.files:
+                file_path = folder_path + "/" + file.file_name
+                if not os.path.exists(file_path):
+                    # Download the file
+                    print("Downloading file " + file.file_name + " to " + file_path)
+                    with open(file_path, 'wb') as f:
+                        f.write(requests.get(file.file_url).content)
+
+            # Upload the tender folder to Google Drive and get the folder id
+            tender_folder_id = upload_folder_to_drive(service, folder_path, date_folder_id)
+            # Get the shareable link for the tender folder
+            tender.drive_url = get_shareable_link(service, tender_folder_id)
+
 
 def authenticate_google_drive():
     """Authenticates with the Google Drive API and returns a service object."""

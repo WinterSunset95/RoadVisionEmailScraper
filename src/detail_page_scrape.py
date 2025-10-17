@@ -5,8 +5,17 @@ import requests
 
 from data_models import TenderDetailContactInformation, TenderDetailDetails, TenderDetailKeyDates, TenderDetailNotice, TenderDetailOtherDetail, TenderDetailPage, TenderDetailPageFile
 
+def notice_table_helper(search: str, rows: List[Tag]) -> str:
+    for row in rows:
+        if search in row.text:
+            print("Row text: " + row.text)
+            return row.find_all('td')[1].text
+
+    return "N/A"
+
+
 def scrape_notice_table(table: Tag) -> TenderDetailNotice:
-    # 14 rows in the notice table
+    # up to 14 rows in the notice table
     # Row one is table name, Ignore
     # Remaining rows are as follows:
     # 1. TDR
@@ -22,38 +31,25 @@ def scrape_notice_table(table: Tag) -> TenderDetailNotice:
     # 11. Tender Type
     # 12. Bidding Type
     # 13. Competition Type
+    # Note that some of these will not exist. 
+    # we have to smartly find the ones that do exist
     rows = table.find_all('tr')
-    if not len(rows) == 14:
-        raise Exception("Tender notice table has incorrect number of rows")
-
-    tdr = rows[1].find_all('td')[1].text
-    tendering_authority = rows[2].find_all('td')[1].text
-    tender_no = rows[3].find_all('td')[1].text
-    tender_id = rows[4].find_all('td')[1].text
-    tender_brief = rows[5].find_all('td')[1].text
-    city = rows[6].find_all('td')[1].text
-    state = rows[7].find_all('td')[1].text
-    document_fees = rows[8].find_all('td')[1].text
-    emd = rows[9].find_all('td')[1].text
-    tender_value = rows[10].find_all('td')[1].text
-    tender_type = rows[11].find_all('td')[1].text
-    bidding_type = rows[12].find_all('td')[1].text
-    competition_type = rows[13].find_all('td')[1].text
+    rows = rows[1:]
 
     return TenderDetailNotice(
-        tdr=tdr,
-        tendering_authority=tendering_authority,
-        tender_no=tender_no,
-        tender_id=tender_id,
-        tender_brief=tender_brief,
-        city=city,
-        state=state,
-        document_fees=document_fees,
-        emd=emd,
-        tender_value=tender_value,
-        tender_type=tender_type,
-        bidding_type=bidding_type,
-        competition_type=competition_type
+        tdr=notice_table_helper('TDR', rows),
+        tendering_authority=notice_table_helper('Tendering Authority', rows),
+        tender_no=notice_table_helper('Tender No', rows),
+        tender_id=notice_table_helper('Tender ID', rows),
+        tender_brief=notice_table_helper('Tender Brief', rows),
+        city=notice_table_helper('City', rows),
+        state=notice_table_helper('State', rows),
+        document_fees=notice_table_helper('Document Fees', rows),
+        emd=notice_table_helper('EMD', rows),
+        tender_value=notice_table_helper('Tender Value', rows),
+        tender_type=notice_table_helper('Tender Type', rows),
+        bidding_type=notice_table_helper('Bidding Type', rows),
+        competition_type=notice_table_helper('Competition Type', rows)
     )
 
 def scrape_details(table: Tag) -> TenderDetailDetails:
@@ -63,44 +59,50 @@ def scrape_details(table: Tag) -> TenderDetailDetails:
         raise Exception("Tender details table does not have a paragraph")
     return TenderDetailDetails(tender_details=p.text)
 
+def key_dates_helper(search: str, rows: List[Tag]) -> str:
+    for row in rows:
+        if search in row.text:
+            return row.find_all('td')[1].text
+
+    return "N/A"
+
 def scrape_key_dates(table: Tag) -> TenderDetailKeyDates:
-    # This table has 4 rows:
+    # This table has upto 4 rows:
     # 1. Table name
     # 2. Publish Date
     # 3. Last Date of Bid Submission
     # 4. Tender Opening Date
+    # Note that some of these will not exist.
     rows = table.find_all('tr')
-    if not len(rows) == 4:
-        raise Exception("Tender key dates table has incorrect number of rows")
-
-    publish_date = rows[1].find_all('td')[1].text
-    last_date_of_bid_submission = rows[2].find_all('td')[1].text
-    tender_opening_date = rows[3].find_all('td')[1].text
+    rows = rows[1:]
 
     return TenderDetailKeyDates(
-        publish_date=publish_date,
-        last_date_of_bid_submission=last_date_of_bid_submission,
-        tender_opening_date=tender_opening_date
+        publish_date=key_dates_helper('Publish Date', rows),
+        last_date_of_bid_submission=key_dates_helper('Last Date of Bid Submission', rows),
+        tender_opening_date=key_dates_helper('Tender Opening Date', rows)
     )
 
+def contact_information_helper(search: str, rows: List[Tag]) -> str:
+    for row in rows:
+        if search in row.text:
+            return row.find_all('td')[1].text
+
+    return "N/A"
+
 def scrape_contact_information(table: Tag) -> TenderDetailContactInformation:
-    # This table has 4 rows:
+    # This table has upto 4 rows:
     # 1. Table name
     # 2. Company Name
     # 3. Contact Person
     # 4. Address
+    # Note that some of these will not exist.
     rows = table.find_all('tr')
-    if not len(rows) == 4:
-        raise Exception("Tender contact information table has incorrect number of rows")
-
-    company_name = rows[1].find_all('td')[1].text
-    contact_person = rows[2].find_all('td')[1].text
-    address = rows[3].find_all('td')[1].text
+    rows = rows[1:]
 
     return TenderDetailContactInformation(
-        company_name=company_name,
-        contact_person=contact_person,
-        address=address
+        company_name=contact_information_helper('Company Name', rows),
+        contact_person=contact_information_helper('Contact Person', rows),
+        address=contact_information_helper('Address', rows)
     )
 
 def scrape_other_details(table: Tag) -> TenderDetailOtherDetail:
@@ -154,6 +156,7 @@ def scrape_other_details(table: Tag) -> TenderDetailOtherDetail:
 
 
 def scrape_tender(tender_link) -> TenderDetailPage:
+    print("Scraping tender: " + tender_link)
     page = requests.get(tender_link)
     soup = BeautifulSoup(page.content, 'html.parser')
 
