@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <link rel="stylesheet" href="./template.css">
+</head>
+<body>
+
+  <table id="header" class="blue_text">
+    <tr>
+      <td>
+        <img src="https://wintersunset95.github.io/roadvisionlogo.jpg" />
+      </td>
+      <td>
+        <table>
+          <tr><td class="right_td_align"><h3>New Tender</h3></td></tr>
+          <tr><td id="date" class="right_td_align">{{date}}</td></tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td></td>
+      <td class="right_td_align" id="contact">{{contact}}</td>
+    </tr>
+    <tr>
+      <td>
+        <table>
+          <tr>
+            <td><h4>{{name}}</h4></td>
+          </tr>
+          <tr>
+            <td id="company">{{company}}</td>
+          </tr>
+        </table>
+      </td>
+      <td class="right_td_align"><h4>{{no_of_new_tenders}} New Tenders Related to Your Business</h4></td>
+    </tr>
+  </table>
+
+  <br><br>
+
+  <table id="queries" border="1" bordercolor="gray" cellspacing="0" cellpadding="5">
+    <thead>
+      <tr>
+        <td>Query</td>
+        <td>No. of Tenders Found</td>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="query_tender_row">
+        <td>{{query}}</td>
+        <td>{{no_of_tenders_found_under_query}}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <br><br>
+
+  <div id="tenders">
+    <table class="tender_query_table">
+      <thead>
+        <tr>
+          <td class="center_td_align">{{tender_name}}</td>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="staggered_colored">
+            <table class="tender_table" cellspacing="2" cellpadding="5">
+              <tr>
+                <td>{{tender_name_and_number}}</td>
+                <td colspan="2" class="right_td_align">{{tender_city}}</td>
+              </tr>
+              <tr colspan="3">
+                <td>{{tender_summary}}</td>
+              </tr>
+              <tr>
+                <td><b>Tender Value: </b> {{tender_value}}</td>
+                <td><b>Due Date: </b> {{tender_due_date}}</td>
+                <td class="right_td_align"><a href="{{tender_link}}"><b>View Tender</b></a></td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>
