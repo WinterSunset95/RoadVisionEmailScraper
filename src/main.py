@@ -1,3 +1,4 @@
+import time
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from premailer import transform
@@ -14,7 +15,7 @@ import os
 # Local modules
 from detail_page_scrape import scrape_tender
 from drive import authenticate_google_drive, download_folders, get_shareable_link, upload_folder_to_drive
-from email_sender import send_html_email
+from email_sender import listen_and_get_link, send_html_email
 from home_page_scrape import scrape_page
 from templater import generate_email, reformat_page
 
@@ -40,21 +41,75 @@ def insert_drive_links(soup: BeautifulSoup):
     for tender1, tender2 in zip(soup1_tenders_links, soup2_tenders_links):
         tender1['href'] = tender2.find_all('a')[0]['href']
 
-def main():
-    link = input("Enter link: ")
-    if link == "":
-        link = "https://www.tenderdetail.com/dailytenders/47136136/7c7651b5-98f3-4956-9404-913de95abb79"
+def main_scrape(link: str):
     homepage = scrape_page(link)
+    removed_tenders = {}
     for query_table in homepage.query_table:
         print("Current query: " + query_table.query_name)
         for tender in query_table.tenders:
-            tender.details = scrape_tender(tender.tender_url)
-    download_folders(homepage)
+            try:
+                tender.details = scrape_tender(tender.tender_url)
+            except Exception as e:
+                query_table.tenders.remove(tender)
+                removed_tenders[tender.tender_id] = json.loads(tender.model_dump_json(indent=2))
+                print("Error: " + str(e))
+
+    # download_folders(homepage)
     generated_template = generate_email(homepage)
+    insert_drive_links(generated_template)
 
     with open("email.html", "w") as f:
         f.write(generated_template.prettify())
 
+    with open("removed_tenders.json", "w") as f:
+        f.write(json.dumps(removed_tenders))
+
     send_html_email(generated_template)
 
-main()
+def main():
+    """
+    Main workflow: Continuously listens for emails, and when a valid link is
+    found, triggers the scraping and sending process.
+    """
+    print("Select a start mode: ")
+    print("1. Paste a link")
+    print("2. Listen for emails")
+
+    choice = input("Enter your choice (1/2): ")
+
+    if choice == '1':
+        link_to_scrape = input("Enter the link to scrape: ")
+        if link_to_scrape == "":
+            link_to_scrape = "https://www.tenderdetail.com/dailytenders/47136136/7c7651b5-98f3-4956-9404-913de95abb79"
+        main_scrape(link_to_scrape)
+        print("✅ Scraping and email sending process completed successfully.")
+        return
+
+    elif choice == '2':
+        while True:
+            print("\n--- Starting new cycle: Listening for trigger email ---")
+            
+            # 1. Call the listener to get a link
+            link_to_scrape = listen_and_get_link()
+
+            # 2. If a link is found, run the scraper
+            if link_to_scrape:
+                print(f"🚀 Link found! Starting scrape for: {link_to_scrape}")
+                try:
+                    main_scrape(link_to_scrape) # Your existing scraping function
+                    print("✅ Scraping and email sending process completed successfully.")
+                except Exception as e:
+                    print(f"❌ An error occurred during the scrape/send process: {e}")
+            else:
+                print("No new trigger email found.")
+
+            # 3. Wait for 5 minutes before checking again
+            sleep_duration_seconds = 300
+            print(f"--- Cycle complete. Waiting for {sleep_duration_seconds / 60} minutes... ---")
+            time.sleep(sleep_duration_seconds)
+
+    else:
+        print("Invalid choice. Please select 1 or 2.")
+    
+if __name__ == "__main__":
+    main()

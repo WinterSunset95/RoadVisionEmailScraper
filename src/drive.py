@@ -4,6 +4,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
+from dateutil import parser
 
 import os
 import mimetypes
@@ -16,8 +17,35 @@ from detail_page_scrape import scrape_tender
 SCOPES = ['https://www.googleapis.com/auth/drive']
 creds = None
 
+def parse_date(date_string: str) -> str:
+    """
+    Parses a date string in a flexible format and converts it to 'YYYY-MM-DD'.
+
+    Args:
+        date_string: The date string to parse (e.g., "Sunday, Oct 12,2025").
+
+    Returns:
+        The formatted date string 'YYYY-MM-DD', or None if parsing fails.
+    """
+    if not date_string:
+        return "unknown-date"
+
+    try:
+        # 1. Let dateutil parse the string into a datetime object.
+        # It handles missing spaces and other variations automatically.
+        date_object = parser.parse(date_string)
+
+        # 2. Format the object into the desired "YYYY-MM-DD" string.
+        formatted_string = date_object.strftime("%Y-%m-%d")
+        return formatted_string
+
+    except parser.ParserError:
+        print(f"⚠️  Warning: Could not parse the date string '{date_string}'.")
+        return "unknown-date"
+
+
 def download_folders(data: HomePageData):
-    date = data.header.date
+    date = parse_date(data.header.date)
     os.system("rm -rf tenders/" + date)
     os.system("mkdir -p tenders/" + date)
 
@@ -30,24 +58,29 @@ def download_folders(data: HomePageData):
 
     for query_table in data.query_table:
         for tender in query_table.tenders:
-            if not tender.details:
-                tender.details = scrape_tender(tender.tender_url)
-                raise Exception("Tender details not found")
-            # Create a folder for each tender
-            folder_path = "tenders/" + date + "/" + tender.tender_id
-            os.system("mkdir -p " + folder_path)
-            for file in tender.details.other_detail.files:
-                file_path = folder_path + "/" + file.file_name
-                if not os.path.exists(file_path):
-                    # Download the file
-                    print("Downloading file " + file.file_name + " to " + file_path)
-                    with open(file_path, 'wb') as f:
-                        f.write(requests.get(file.file_url).content)
+            try:
+                if not tender.details:
+                    tender.details = scrape_tender(tender.tender_url)
+                    raise Exception("Tender details not found")
+                # Create a folder for each tender
+                folder_path = "tenders/" + date + "/" + tender.tender_id
+                os.system("mkdir -p " + folder_path)
+                for file in tender.details.other_detail.files:
+                    file_path = folder_path + "/" + file.file_name
+                    if not os.path.exists(file_path):
+                        # Download the file
+                        print("Downloading file " + file.file_name + " to " + file_path)
+                        with open(file_path, 'wb') as f:
+                            f.write(requests.get(file.file_url).content)
 
-            # Upload the tender folder to Google Drive and get the folder id
-            tender_folder_id = upload_folder_to_drive(service, folder_path, date_folder_id)
-            # Get the shareable link for the tender folder
-            tender.drive_url = get_shareable_link(service, tender_folder_id)
+                # Upload the tender folder to Google Drive and get the folder id
+                tender_folder_id = upload_folder_to_drive(service, folder_path, date_folder_id)
+                # Get the shareable link for the tender folder
+                tender.drive_url = get_shareable_link(service, tender_folder_id)
+            except Exception as e:
+                print("Error: " + str(e))
+                query_table.tenders.remove(tender)
+
 
 
 def authenticate_google_drive():
