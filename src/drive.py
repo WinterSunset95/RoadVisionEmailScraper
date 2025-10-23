@@ -44,6 +44,34 @@ def parse_date(date_string: str) -> str:
         print(f"⚠️  Warning: Could not parse the date string '{date_string}'.")
         return "unknown-date"
 
+def find_folder(service, folder_name, parent_folder_id=None):
+    """Finds a folder by name and optional parent ID."""
+    try:
+        query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        if parent_folder_id:
+            query += f" and '{parent_folder_id}' in parents"
+
+        response = service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+        existing_folders = response.get('files', [])
+
+        if existing_folders:
+            return existing_folders[0]
+        return None
+    except HttpError as error:
+        print(f"An error occurred finding a folder: {error}")
+        return None
+
+def is_folder_empty(service, folder_id):
+    """Checks if a Google Drive folder is empty."""
+    try:
+        query = f"'{folder_id}' in parents and trashed=false"
+        response = service.files().list(q=query, spaces='drive', fields='files(id)', pageSize=1).execute()
+        items = response.get('files', [])
+        return len(items) == 0
+    except HttpError as error:
+        print(f"An error occurred checking if folder is empty: {error}")
+        return False # Assume not empty on error
+
 def download_folders(data: HomePageData):
     date = parse_date(data.header.date)
     os.system("rm -rf tenders/" + date)
@@ -53,8 +81,17 @@ def download_folders(data: HomePageData):
     if not service:
         return
 
-    # Upload the "date" folder to Google Drive and get the folder id
-    date_folder_id = upload_folder_to_drive(service, "tenders/" + date)
+    # Check if the date folder exists
+    date_folder = find_folder(service, date)
+    if date_folder:
+        date_folder_id = date_folder.get('id')
+        if not is_folder_empty(service, date_folder_id):
+            print(f"Folder '{date}' already exists and is not empty.")
+        else:
+            print(f"Folder '{date}' already exists and is empty.")
+    else:
+        # Upload the "date" folder to Google Drive and get the folder id
+        date_folder_id = upload_folder_to_drive(service, "tenders/" + date)
 
     for query_table in data.query_table:
         for tender in query_table.tenders:
