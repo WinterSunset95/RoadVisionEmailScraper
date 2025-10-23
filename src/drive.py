@@ -154,15 +154,9 @@ def upload_folder_to_drive(service, local_folder_path, parent_folder_id=None) ->
 
     try:
         # Check if folder already exists
-        query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-        if parent_folder_id:
-            query += f" and '{parent_folder_id}' in parents"
-
-        response = service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
-        existing_folders = response.get('files', [])
-
-        if existing_folders:
-            folder_id = existing_folders[0].get('id')
+        existing_folder = find_folder(service, folder_name, parent_folder_id)
+        if existing_folder:
+            folder_id = existing_folder.get('id')
             print(f"\nFolder '{folder_name}' already exists with ID: {folder_id}. Skipping upload.")
             return folder_id
 
