@@ -1,3 +1,4 @@
+from typing import Optional
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -43,7 +44,6 @@ def parse_date(date_string: str) -> str:
         print(f"⚠️  Warning: Could not parse the date string '{date_string}'.")
         return "unknown-date"
 
-
 def download_folders(data: HomePageData):
     date = parse_date(data.header.date)
     os.system("rm -rf tenders/" + date)
@@ -81,8 +81,6 @@ def download_folders(data: HomePageData):
                 print("Error: " + str(e))
                 query_table.tenders.remove(tender)
 
-
-
 def authenticate_google_drive():
     """Authenticates with the Google Drive API and returns a service object."""
     creds = None
@@ -112,7 +110,7 @@ def authenticate_google_drive():
         print(f"An error occurred during authentication: {error}")
         return None
 
-def upload_folder_to_drive(service, local_folder_path, parent_folder_id=None):
+def upload_folder_to_drive(service, local_folder_path, parent_folder_id=None) -> Optional[str]:
     """Uploads a local folder and its contents to Google Drive."""
     folder_name = os.path.basename(local_folder_path)
     print(f"\nUploading folder '{folder_name}' to Google Drive...")
