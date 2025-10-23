@@ -96,6 +96,14 @@ def download_folders(data: HomePageData):
     for query_table in data.query_table:
         for tender in query_table.tenders:
             try:
+                tender_folder = find_folder(service, tender.tender_id, date_folder_id)
+                if tender_folder:
+                    tender_folder_id = tender_folder.get('id')
+                    if not is_folder_empty(service, tender_folder_id):
+                        print(f"Folder '{tender.tender_id}' already exists and is not empty. Skipping download.")
+                        tender.drive_url = get_shareable_link(service, tender_folder_id)
+                        continue
+
                 if not tender.details:
                     tender.details = scrape_tender(tender.tender_url)
                     raise Exception("Tender details not found")
