@@ -111,19 +111,34 @@ def authenticate_google_drive():
         return None
 
 def upload_folder_to_drive(service, local_folder_path, parent_folder_id=None) -> Optional[str]:
-    """Uploads a local folder and its contents to Google Drive."""
+    """Uploads a local folder and its contents to Google Drive.
+    Checks if the folder already exists before uploading."""
     folder_name = os.path.basename(local_folder_path)
-    print(f"\nUploading folder '{folder_name}' to Google Drive...")
-    
-    # 1. Create the folder on Google Drive
-    file_metadata = {
-        'name': folder_name,
-        'mimeType': 'application/vnd.google-apps.folder'
-    }
-    if parent_folder_id:
-        file_metadata['parents'] = [parent_folder_id]
-        
+
     try:
+        # Check if folder already exists
+        query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        if parent_folder_id:
+            query += f" and '{parent_folder_id}' in parents"
+
+        response = service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+        existing_folders = response.get('files', [])
+
+        if existing_folders:
+            folder_id = existing_folders[0].get('id')
+            print(f"\nFolder '{folder_name}' already exists with ID: {folder_id}. Skipping upload.")
+            return folder_id
+
+        print(f"\nUploading folder '{folder_name}' to Google Drive...")
+
+        # 1. Create the folder on Google Drive
+        file_metadata = {
+            'name': folder_name,
+            'mimeType': 'application/vnd.google-apps.folder'
+        }
+        if parent_folder_id:
+            file_metadata['parents'] = [parent_folder_id]
+
         gdrive_folder = service.files().create(body=file_metadata, fields='id').execute()
         gdrive_folder_id = gdrive_folder.get('id')
         print(f"  - Created Google Drive folder with ID: {gdrive_folder_id}")
